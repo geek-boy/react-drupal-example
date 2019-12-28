@@ -54,34 +54,63 @@ class Favorite extends Component {
   }
   
   saveFavorite(favorited) {
-    var endpoint = '/jsonapi/user/user/' + this.state.user_uuid + '/relationships/field_favorites';
-    var method = 'POST';
-    if (!favorited) {
-      method = 'DELETE';
-    }
-    fetch(endpoint, {
-      method: method,
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/vnd.api+json',
-        'Content-Type': 'application/vnd.api+json'
-      },
-      body: JSON.stringify({
-        "data": [
-          {"type": 'node--' + this.state.node_type, "id": this.state.node_uuid}
-        ]
+    this.getSessionCSRFToken().then((session_token) => {      
+      var endpoint = '/jsonapi/user/user/' + this.state.user_uuid + '/relationships/field_favorites';
+      var method = 'POST';
+      if (!favorited) {
+        method = 'DELETE';
+      }
+      
+      fetch(endpoint, {
+        method: method,
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/vnd.api+json',
+          'Content-Type': 'application/vnd.api+json',
+          'X-CSRF-Token': session_token
+        },
+        body: JSON.stringify({
+          "data": [
+            {"type": 'node--' + this.state.node_type, "id": this.state.node_uuid}
+          ]
+        })
+      }).then((response) => {
+        if (response.ok) {
+            this.setState({
+              favorited: favorited
+            });
+        }
+        else {
+          console.log('error favoriting node :(');
+          throw Error(response.statusText);
+        }
       })
-    }).then((response) => {
-      if (response.ok) {
-        response.json().then((data) => {
-          this.setState({
-            favorited: favorited
-          });
-        });
-      }
-      else {
-        console.log('error favoriting node');
-      }
+      .catch( function(error) {
+        console.log(error);
+      });
+    });
+  }
+
+  getSessionCSRFToken() {
+    return new Promise(resolve => {
+      var endpoint = '/session/token';
+      var method = 'GET';
+
+      fetch(endpoint, {
+        method: method,
+        credentials: 'include'
+      }).then((response) =>
+          {
+          if (response.ok) {
+            return response;
+          }
+          else {
+            console.log('error getting CSRF Token');
+          }
+      }).then((response) => response.text())
+        .then(token => {
+          resolve(token);
+      });
     });
   }
   
